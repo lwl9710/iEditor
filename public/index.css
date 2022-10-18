@@ -1,0 +1,21 @@
+.i-editor-container {
+    position: relative;
+    margin: 50px auto 0;
+    width: 800px;
+}
+.i-editor-main {
+    overflow-y: auto;
+    padding: 8px;
+    height: 500px;
+    background-color: #fff;
+    outline: none;
+    border: 1px solid #eee;
+    border-radius: 8px;
+}
+
+.i-editor-placeholder {
+    position: absolute;
+    left: 9px;
+    color: #efefef;
+    visibility: hidden;
+}
