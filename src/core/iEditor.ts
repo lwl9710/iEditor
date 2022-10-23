@@ -108,105 +108,67 @@ export default class IEditor {
       const { startContainer, endContainer, startOffset, endOffset } = range;
       let startRow = this.getRow(startContainer);
       let endRow = this.getRow(endContainer);
-      let startCol = this.getCol(startContainer);
-      let endCol = this.getCol(endContainer);
+      let startCol, endCol;
+      if(this.isRow(startContainer)) {
+        startCol = startContainer.childNodes[startOffset];
+      } else {
+        startCol = this.getCol(startContainer)
+      }
 
+      if(this.isRow(endContainer)) {
+        endCol = endContainer.childNodes[endOffset - 1];
+      } else {
+        endCol = this.getCol(endContainer);
+      }
       if(startRow === endRow) {
         // 单行处理
         info.rows.push(startRow);
-        if(startContainer === endContainer) {
+        if(startCol === endCol) {
           //单节点处理
-          if(startContainer.nodeType === 3) {
-            // 文本节点处理
-            const content = startContainer.textContent??"";
-            if(this.isColSpan(startCol)) {
-              // parent 是一个Col节点
-              if(endOffset - startOffset === content.length) {
-                // 全文本段
-                info.cols.push(startCol as HTMLSpanElement);
-              } else {
-                const { fragment, el, node } = this.splitColSpan(startCol  as HTMLSpanElement, startOffset, endOffset);
-                info.cols.push(el);
-                this.replaceCol(startCol, fragment);
-                range.setStart(node, 0);
-                range.setEnd(node, node.length);
-              }
-            } else {
-              // 这是一个文本节点
-              const { el, node } = this.createColSpan(content.substring(startOffset, endOffset));
+          if(startOffset === endOffset)return;
+          if(startCol.nodeType === 3) {
+            const content = startCol.textContent??"";
+            if((endOffset - startOffset) === content.length) {
+              const { el, node } = this.createColSpan(content);
               info.cols.push(el);
-              range.deleteContents();
-              range.insertNode(el);
-              range.setStart(node, 0);
-              range.setEnd(node, node.length);
+              this.replaceCol(startCol, el);
+              range.selectNodeContents(node);
+            } else {
+              const { fragment, el, node } = this.splitTextNode(startCol as Text, startOffset, endOffset);
+              info.cols.push(el);
+              this.replaceCol(startCol, fragment);
+              range.selectNodeContents(node);
             }
-          } else {
-            // 非文本节点处理
-            /*  暂不考虑非文本节点处理方式  */
+          } else if(this.isColSpan(startCol)) {
+            const content = startCol.textContent??"";
+            if(content.length === (endOffset - startOffset)) {
+              info.cols.push(startCol as HTMLSpanElement);
+            } else {
+              const { fragment, el, node } = this.splitColSpan(startCol as HTMLSpanElement, startOffset, endOffset);
+              info.cols.push(el);
+              this.replaceCol(startCol, fragment);
+              range.selectNodeContents(node);
+            }
           }
         } else {
           //多节点处理
-          if(startContainer.nodeType === 3) {
-            const startContent = startContainer.textContent??"";
-            if(startOffset === 0) {
-              // 全文
-              if(this.isColSpan(startCol)) {
-                info.cols.push(startCol as HTMLSpanElement);
-              } else {
-                const { el, node } = this.createColSpan(startContent);
-                this.replaceCol(startContainer, el);
-                range.setStart(node, 0);
-              }
-            } else {
-              // 非全文
-              let result;
-              if(this.isColSpan(startCol)) {
-                result = this.splitColSpan(startCol as HTMLSpanElement, startOffset, startContent.length);
-              } else {
-                result = this.splitTextNode(startContainer as Text, startOffset, startContent.length);
-              }
-              info.cols.push(result.el);
-              this.replaceCol(startCol, result.fragment)
-              range.setStart(result.node, startOffset);
-            }
-          }
+          this.firstColHandler(info, range, startCol, startOffset);
           let nextCol = startCol.nextSibling;
-          while (nextCol && nextCol !== endCol) {
+          while(nextCol && nextCol !== endCol) {
             const temp = nextCol.nextSibling;
             this.fullNodeHandler(info, nextCol);
             nextCol = temp;
           }
-          if(endContainer.nodeType === 3) {
-            const endContent = endContainer.textContent??"";
-            if(endOffset === endContent.length) {
-              // 全文
-              if(this.isColSpan(endCol)) {
-                info.cols.push(endCol as HTMLSpanElement);
-              } else {
-                const { el, node } = this.createColSpan(endContent);
-                this.replaceCol(endContainer, el);
-                range.setEnd(node, endContent.length);
-              }
-            } else {
-              // 非全文
-              let result;
-              if(this.isColSpan(endCol)) {
-                result = this.splitColSpan(endCol as HTMLSpanElement, 0, endOffset);
-              } else {
-                result = this.splitTextNode(endContainer as Text, 0, endOffset);
-              }
-              info.cols.push(result.el);
-              this.replaceCol(endCol, result.fragment);
-              range.setEnd(result.node, endOffset);
-            }
-          }
+          this.lastColHandler(info, range, endCol, endOffset);
         }
       } else {
         // 多行处理
         //开始行操作
+        info.rows.push(startRow);
         this.startRowHandler(info, range, startCol, startOffset);
         let nextRow = startRow.nextSibling;
         while(nextRow && nextRow !== endRow) {
+          info.rows.push(nextRow as HTMLElement);
           // 中间行
           const temp = nextRow.nextSibling;
           const childNodes = nextRow.childNodes;
@@ -216,6 +178,7 @@ export default class IEditor {
           nextRow = temp;
         }
         //结束操作
+        info.rows.push(endRow);
         this.lastRowHandler(info, range, endCol, endOffset);
       }
       return info;
@@ -226,6 +189,7 @@ export default class IEditor {
     if(node.nodeType === 3) {
       const el = this.createColSpan(node.nodeValue??"").el;
       this.replaceCol(node, el);
+      info.cols.push(el);
     } else if(this.isColSpan(node)) {
       info.cols.push(node as HTMLSpanElement);
     }
@@ -237,13 +201,7 @@ export default class IEditor {
     this.firstColHandler(info, range, startCol, startOffset);
     while(nextCol) {
       const temp = nextCol.nextSibling;
-      if(nextCol.nodeType === 3) {
-        const el = this.createColSpan(nextCol.nodeValue??"").el;
-        info.cols.push(el);
-        this.replaceCol(nextCol, el);
-      } else if(this.isColSpan(nextCol)) {
-        info.cols.push(nextCol as HTMLSpanElement);
-      }
+      this.fullNodeHandler(info, nextCol);
       nextCol = temp;
     };
   }
@@ -253,12 +211,7 @@ export default class IEditor {
     this.lastColHandler(info, range, endCol, endOffset);
     while (previousCol) {
       const temp = previousCol.previousSibling;
-      if(previousCol.nodeType === 3) {
-        const el = this.createColSpan(previousCol.nodeValue??"").el;
-        this.replaceCol(previousCol, el);
-      } else if(this.isColSpan(previousCol)) {
-        info.cols.push(previousCol as HTMLSpanElement);
-      }
+      this.fullNodeHandler(info, previousCol);
       previousCol = temp;
     }
 
@@ -267,12 +220,12 @@ export default class IEditor {
   private firstColHandler(info: SelectedInfo, range: Range, startCol: Node, startOffset: number) {
     let result;
     if(startCol.nodeType === 3) {
-      result = this.colTextHandler(info, startCol as Text, 0, startOffset);
+      result = this.colTextHandler(info, startCol as Text, startOffset, (startCol.nodeValue??"").length);
     } else if(this.isColSpan(startCol)) {
-      result = this.colSpanHandler(info, startCol as HTMLSpanElement, 0, startOffset);
+      result = this.colSpanHandler(info, startCol as HTMLSpanElement, startOffset, (startCol.textContent??"").length);
     }
     if(result) {
-      range.setStart(result, startOffset);
+      range.setStart(result, 0);
     }
   }
 

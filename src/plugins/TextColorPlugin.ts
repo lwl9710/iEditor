@@ -15,9 +15,12 @@ export default class TextColorPlugin implements IEditorPlugin {
     this.element.appendChild(input);
     input.addEventListener("change", event => {
       let newColor = (event.target as HTMLInputElement).value;
-      console.log("颜色发生改变");
-      console.log(this.iEditorIncetance?.getSelectedElements());
-
+      let info = this.iEditorIncetance?.getSelectedElements();
+      if(info) {
+        info.cols.forEach(el => {
+          el.style.color = newColor;
+        })
+      }
     });
     this.element.appendChild(input);
   }
