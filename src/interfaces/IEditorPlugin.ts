@@ -1,4 +1,4 @@
-import IEditor from "../iEditor";
+import IEditor from "../core/iEditor";
 
 /**
  * 作者：A.C

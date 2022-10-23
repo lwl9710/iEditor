@@ -1,5 +1,5 @@
 import IEditorPlugin from "../interfaces/IEditorPlugin";
-import IEditor from "../iEditor";
+import IEditor from "../core/iEditor";
 
 
 export default class TextColorPlugin implements IEditorPlugin {
@@ -15,9 +15,11 @@ export default class TextColorPlugin implements IEditorPlugin {
     this.element.appendChild(input);
     input.addEventListener("change", event => {
       let newColor = (event.target as HTMLInputElement).value;
+      console.log("颜色发生改变");
+      console.log(this.iEditorIncetance?.getSelectedElements());
 
-
-    })
+    });
+    this.element.appendChild(input);
   }
 
 
