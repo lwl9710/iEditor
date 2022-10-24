@@ -1,5 +1,5 @@
 import IEditorPlugin from "../interfaces/IEditorPlugin";
-import IEditor from "../core/iEditor";
+import IEditor, { PointInfo } from "../core/iEditor";
 
 
 export default class TextColorPlugin implements IEditorPlugin {
@@ -29,5 +29,14 @@ export default class TextColorPlugin implements IEditorPlugin {
   public install(iEditorInstance: IEditor): HTMLElement {
     this.iEditorIncetance = iEditorInstance;
     return this.element;
+  }
+
+  public update(pointInfo: PointInfo) {
+    if(pointInfo !== null) {
+      if(pointInfo.col instanceof HTMLElement) {
+
+        // (this.element.firstElementChild as HTMLInputElement).value = pointInfo.col.style.color;
+      }
+    }
   }
 }

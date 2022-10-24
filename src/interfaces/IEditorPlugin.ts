@@ -1,4 +1,4 @@
-import IEditor from "../core/iEditor";
+import IEditor, { PointInfo } from "../core/iEditor";
 
 /**
  * 作者：A.C
@@ -9,4 +9,6 @@ import IEditor from "../core/iEditor";
 export default interface IEditorPlugin {
   // 这个方法用于返回最终显示在工具栏上的元素
   install(iEditorInstance: IEditor): HTMLElement
+  // 这个方法用于跟踪指针变化 以实现实时显示状态信息
+  update(pointInfo: PointInfo): void;
 }

@@ -1,5 +1,11 @@
 import IEditorPlugin from "../interfaces/IEditorPlugin";
 
+export type PointInfo = null | {
+  row: HTMLElement;
+  col: Node,
+  startOffset: number
+};
+
 interface IEditorOptions {
   width?: number;
   height?: number;
@@ -24,6 +30,7 @@ export default class IEditor {
   public header: HTMLElement = document.createElement("div");
   public main: HTMLElement = document.createElement("div");
   public placeholder: HTMLElement = document.createElement("div");
+  private plugins: Array<IEditorPlugin> = [];
 
   constructor(options?: IEditorOptions) {
     const { width = 800, height = 500, HTMLText = "" } = options || {};
@@ -60,6 +67,12 @@ export default class IEditor {
     if(!this.main.innerHTML) {
       this.main.innerHTML = `<p class="${ ClassNameCollection.ROW }"><br></p>`;
     }
+    this.main.addEventListener("click", event => {
+      const pointInfo = this.getCurrentPointInfo();
+      this.plugins.forEach(plugin => {
+        plugin.update(pointInfo);
+      })
+    })
     this.main.addEventListener("keydown", (event) => {
       if(event.keyCode === 8 && !this.hasContent()) {
         event.preventDefault();
@@ -69,6 +82,17 @@ export default class IEditor {
         })
       }
     });
+  }
+
+  private getCurrentPointInfo(): PointInfo {
+    const selection = document.getSelection();
+    if(selection && selection.rangeCount > 0) {
+      let { startContainer, startOffset } = selection.getRangeAt(0);
+      const col = this.isRow(startContainer) ? startContainer.childNodes[startOffset] : this.getCol(startContainer);
+      const row = this.getRow(startContainer);
+      return { row, col, startOffset };
+    }
+    return null;
   }
 
   private hasContent(): boolean {
@@ -95,6 +119,7 @@ export default class IEditor {
 
   // 添加插件
   public use(iEditorPlugin: IEditorPlugin) {
+    this.plugins.push(iEditorPlugin);
     this.header.appendChild(iEditorPlugin.install(this));
     return this;
   }
