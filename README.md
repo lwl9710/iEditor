@@ -1,4 +1,4 @@
-# IEditor富文本编辑器
+# iEditor富文本编辑器
 
 
 
